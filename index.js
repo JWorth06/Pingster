@@ -122,12 +122,14 @@ setInterval(function () {
 
 }, 10000);
 
-//This runs every X seconds to clear out old message entries, clear out pings that were responded to, and escalate pings.
+//This runs every 30 seconds to clear out old message entries, clear out pings that were responded to, and escalate pings.
 setInterval(function () {
 	
 	removeOldMessages();
 	
 	removeMatchedPings();
+	
+	escalateToCall();
 	
 	escalateMissedPing();
 	
@@ -140,7 +142,7 @@ setInterval(function () {
 }, 30000);
 
 
-//This runs every X seconds to ping Slack so the bot doesn't time out.
+//This runs every 5 seconds to ping Slack so the bot doesn't time out.
 setInterval(function () {
 	
 	bot.ping();
@@ -152,7 +154,7 @@ setInterval(function () {
 bot.respondTo('ping', (message, channel, user) => {
 	
   bot.setTypingIndicator(message.channel);
-  let members = bot.getMembersByChannel(channel);   //gets information of everyone in the channel and the person to ping
+  //let members = bot.getMembersByChannel(channel);   //gets information of everyone in the channel and the person to ping
   let key = getArgs(message.text).shift();
 
   
@@ -183,12 +185,14 @@ bot.respondTo('ping', (message, channel, user) => {
 	  bot.send(`Sorry ${user.name}, I cannot send that user a direct message because he does not have a direct message with me open.`, channel);
 	}
 	else{
+	  console.log('SENDING DM');
 	  bot.slack.sendMessage(msgtopingee, dm.id);
 	}
 
+	console.log('SENDING TEXT')
 	twilioText(phonenum, msgtopingee);
 	twilioCall(phonenum);
-    //sendemail(phonenum, msgtopingee,channel.id);			//calls sendmail function and stores the ping into the ping JSON object
+	
     storePingInfo(reply[0], message.ts, key, message.channel, reply[3]);
 
   });
@@ -339,6 +343,29 @@ function storeMessageInfo(username, thetime,  channel) {
   }
 }
 
+//If the text/DM hasn't been responded to in 5 minutes, a call is made to the user
+function escalateToCall(){
+	for(var slackchannel1 in pinged_in_channels){
+		for(var i = Object.keys(pinged_in_channels[slackchannel1]).length - 1; i >= 0; i--){
+			if(pinged_in_channels[slackchannel1][i]['timestamp'] < (Math.floor(new Date() / 1000) - 30)){
+				client.lrange(pinged_in_channels[slackchannel1][i]['who'], 0, -1, (err, reply) => {
+					if (err) {
+					 console.log(err);
+					 bot.send('Oops! I tried to retrieve something but something went wrong :(', channel.id);
+					 return;
+					}
+					let phonenum = reply[1];
+					console.log('MAKING PHONE CALL');
+					console.log(phonenum);
+					twilioCall(phonenum);
+				
+				});		
+			}
+		}
+	}
+};
+
+
 //Looks through the pinged list for people that haven't resopnded in the given room yet.
 //If it has been over the given amount of time, it runs a modified ping process to escalate to the next person.
 function escalateMissedPing(){
@@ -347,7 +374,6 @@ function escalateMissedPing(){
 			if(pinged_in_channels[slackchannel1][i]['timestamp'] < (Math.floor(new Date() / 1000) - pinged_in_channels[slackchannel1][i]['time'])){
 				
 				let thischannel = bot.getChannel(slackchannel1);
-				let members = bot.getMembersByChannel(thischannel);
 				
 				client.lrange(pinged_in_channels[slackchannel1][i]['who'], 0, -1, (err, reply) => {
 					if (err) {
@@ -367,19 +393,23 @@ function escalateMissedPing(){
 						 return;
 						}
 						
-						if ((members.indexOf(newpingee[0]) < 0)) {
-							bot.send(`Sorry ${user.name}, but I either can't find ${newpingee} in this channel, or they are a bot!`, thischannel);
-							return;
-						}
-						
-						
 						let msgtopingee = `You are needed in ${thischannel.name}: slack://channel?id=${thischannel.id}&team=T025W1LAM`;
 						let phonenum = newpingee[1];
 						
 						let dm = bot.getMemberDMbyName(newpingee[0]);
-						bot.slack.sendMessage(msgtopingee, dm.id);
 						
-						sendemail(phonenum, msgtopingee,thischannel.id);			//calls sendmail function and stores the ping into the ping JSON object
+						if(dm == undefined){										//bot gives an error in the channel if there isn't a direct message open or sends a messsage if it is opened.
+						  bot.send(`Sorry ${user.name}, I cannot send that user a direct message because he does not have a direct message with me open.`, channel);
+						}
+						else{
+						  bot.slack.sendMessage(msgtopingee, dm.id);
+						  console.log('SENDING ESCALATED DM');
+						}
+						
+						console.log('SENDING ESCALATED TEXT')
+						twilioText(phonenum, msgtopingee);
+
+						
 						let thetime = (Math.floor(new Date() / 1000));
 						storePingInfo(newpingee[0], thetime, reply[2], slackchannel1);
 
