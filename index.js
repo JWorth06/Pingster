@@ -38,7 +38,7 @@ client.on('connect', () => {
 
 //Authenticates this app for Google Sheets
 setInterval(function () {
-  var jsonPath = path.join(__dirname, 'sheets.googleapis.com-nodejs-quickstart.json');
+  var jsonPath = '/run/secrets/sheets.googleapis.com-nodejs-quickstart.json';
   var clientSecret = process.env.GOOGLE_CLI_SEC;
   var clientId = process.env.GOOGLE_CLI_ID;
   var redirectUrl = process.env.GOOGLE_REDIR_URL;
