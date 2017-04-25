@@ -1,4 +1,4 @@
 #!/bin/bash
 
-source env_source.sh
+source /run/secrets/env_source.sh
 node index.js
