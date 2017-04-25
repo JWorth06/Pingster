@@ -1,0 +1,19 @@
+{
+  "name": "pingbot",
+  "version": "1.0.0",
+  "description": "My Pinging Bot",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Joshua Worthington",
+  "license": "ISC",
+  "dependencies": {
+    "@slack/client": "^3.9.0",
+    "express": "^4.15.2",
+    "google-auth-library": "^0.10.0",
+    "googleapis": "^18.0.0",
+    "nodemailer": "^3.1.7",
+    "sendmail": "^1.1.1"
+  }
+}
