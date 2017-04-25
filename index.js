@@ -38,16 +38,14 @@ client.on('connect', () => {
 
 //Authenticates this app for Google Sheets
 setInterval(function () {
-  //var TOKEN_DIR = (process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE) + '/.credentials/';    //Original token directory code
-  var TOKEN_DIR = 'U:\javascript\pingbot\.credentials\\';
-  var TOKEN_PATH = TOKEN_DIR + 'sheets.googleapis.com-nodejs-quickstart.json';
+  var jsonPath = path.join(__dirname, 'sheets.googleapis.com-nodejs-quickstart.json');
   var clientSecret = process.env.GOOGLE_CLI_SEC;
   var clientId = process.env.GOOGLE_CLI_ID;
   var redirectUrl = process.env.GOOGLE_REDIR_URL;
   var auth = new googleAuth();
   var oauth2Client = new auth.OAuth2(clientId, clientSecret, redirectUrl);
 
-  fs.readFile(TOKEN_PATH, function(err, token) {
+  fs.readFile(jsonPath, function(err, token) {
     if (err) {
       console.log('Error reading Token.');
     } else {
