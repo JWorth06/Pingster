@@ -127,8 +127,6 @@ setInterval(function () {
 
     removeMatchedPings();
 
-    escalateToCall();
-
     escalateMissedPing();
 
     console.log('Message JSON:');
@@ -138,6 +136,14 @@ setInterval(function () {
     console.log('Stalk JSON:');
     console.log(JSON.stringify(stalked_people));
 }, 30000);
+
+//Checks if calls need to be escalated every 10 mins
+setInterval(function () {
+
+    escalateToCall();
+
+}, 600000);
+
 
 
 //This runs every 5 seconds to ping Slack so the bot doesn't time out.
@@ -191,7 +197,6 @@ bot.respondTo('ping', (message, channel, user) => {
 
     console.log('SENDING TEXT')
     twilioText(phonenum, msgtopingee);
-    twilioCall(phonenum);
 
     storePingInfo(reply[0], message.ts, key, message.channel, reply[3]);
 
@@ -347,7 +352,7 @@ function storeMessageInfo(username, thetime,  channel) {
 function escalateToCall(){
     for(var slackchannel1 in pinged_in_channels){
         for(var i = Object.keys(pinged_in_channels[slackchannel1]).length - 1; i >= 0; i--){
-            if(pinged_in_channels[slackchannel1][i]['timestamp'] < (Math.floor(new Date() / 1000) - 30)){
+            if(pinged_in_channels[slackchannel1][i]['timestamp'] < (Math.floor(new Date() / 1000) - 300)){
                 client.lrange(pinged_in_channels[slackchannel1][i]['who'], 0, -1, (err, reply) => {
                     if (err) {
                      console.log(err);
