@@ -2,7 +2,7 @@
 
 //building global variables
 var redis = require('redis');
-var Bot = require('./Bot');
+var Bot = require('/pingbot/node_modules/bot.js');
 var fs = require('fs');
 var readline = require('readline');
 var google = require('googleapis');
