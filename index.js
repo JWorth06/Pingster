@@ -177,7 +177,9 @@ bot.respondTo('ping', (message, channel, user) => {
 
     let msgtopingee = `You are needed in ${channel.name}: slack://channel?id=${channel.id}&team=T025W1LAM`;            //define message to send, extract phone number, and get the direct message
     let phonenum = reply[1];
-    let dm = bot.getMemberDMbyName(reply[0]);
+	
+	let pingedUser = bot.getMemberbyName(key);
+	let dm = bot.getMemberDMbyID(pingedUser);
 
     if(dm == undefined){                                        //bot gives an error in the channel if there isn't a direct message open or sends a messsage if it is opened.
       bot.send(`Sorry ${user.name}, I cannot send that user a direct message because he does not have a direct message with me open.`, channel);
