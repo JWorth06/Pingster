@@ -165,7 +165,7 @@ class Bot {
 
   getMemberDMbyID(id) {
       console.log(JSON.stringify(id));
-    return this.slack.dataStore.getDMById(id);
+    return this.slack.dataStore.getDMByUserId(id);
   }
 
   getMemberDMbyName(name) {

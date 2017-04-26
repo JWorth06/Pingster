@@ -2,7 +2,7 @@
 
 //building global variables
 var redis = require('redis');
-var Bot = require('/pingbot/node_modules/bot.js');
+var Bot = require('./Bot');
 var fs = require('fs');
 var readline = require('readline');
 var google = require('googleapis');
@@ -122,12 +122,12 @@ setInterval(function () {
 
 //This runs every 30 seconds to clear out old message entries, clear out pings that were responded to, and escalate pings.
 setInterval(function () {
-
+	
     removeOldMessages();
 
     removeMatchedPings();
-
-    escalateMissedPing();
+	
+	escalateMissedPing();
 
     console.log('Message JSON:');
     console.log(JSON.stringify(messages_in_channels));
@@ -183,23 +183,27 @@ bot.respondTo('ping', (message, channel, user) => {
 
     let msgtopingee = `You are needed in ${channel.name}: slack://channel?id=${channel.id}&team=T025W1LAM`;            //define message to send, extract phone number, and get the direct message
     let phonenum = reply[1];
+
 	
-	let pingedUser = bot.getMemberbyName(key);
-	let dm = bot.getMemberDMbyID(pingedUser);
-
-    if(dm == undefined){                                        //bot gives an error in the channel if there isn't a direct message open or sends a messsage if it is opened.
-      bot.send(`Sorry ${user.name}, I cannot send that user a direct message because he does not have a direct message with me open.`, channel);
-    }
-    else{
-      console.log('SENDING DM');
-      bot.slack.sendMessage(msgtopingee, dm.id);
-    }
-
+	let pingedUser = bot.getMemberbyName(reply[0]);
+	
+	if (pingedUser == undefined){
+		bot.send('Sorry, that is not a valid ResearchNow ID', channel);
+	} else {
+		let dm = bot.getMemberDMbyName(pingedUser.name);
+		
+		if(dm == undefined){                                        //bot gives an error in the channel if there isn't a direct message open or sends a messsage if it is opened.
+		  bot.send(`Sorry, I cannot send that user a direct message because he does not have a direct message with me open.`, channel);
+		}
+		else{
+		  console.log('SENDING DM');
+		  bot.slack.sendMessage(msgtopingee, dm.id);
+		}
     console.log('SENDING TEXT')
     twilioText(phonenum, msgtopingee);
 
     storePingInfo(reply[0], message.ts, key, message.channel, reply[3]);
-
+	}
   });
 }, true);
 
@@ -401,23 +405,29 @@ function escalateMissedPing(){
                         let msgtopingee = `You are needed in ${thischannel.name}: slack://channel?id=${thischannel.id}&team=T025W1LAM`;
                         let phonenum = newpingee[1];
 
-                        let dm = bot.getMemberDMbyName(newpingee[0]);
+						let pingedUser = bot.getMemberbyName(newpingee[0]);
+						
+						if (pingedUser == undefined){
+							bot.send('Sorry, that is not a valid ResearchNow ID', channel);
+						} else {
+							let dm = bot.getMemberDMbyName(pingedUser.name);
+							console.log(dm);
+		
+							if(dm == undefined){                                        //bot gives an error in the channel if there isn't a direct message open or sends a messsage if it is opened.
+							  bot.send(`Sorry, I cannot send that user a direct message because he does not have a direct message with me open.`, channel);
+							}
+							else{
+							  bot.slack.sendMessage(msgtopingee, dm.id);
+							  console.log('SENDING ESCALATED DM');
+							}
 
-                        if(dm == undefined){                                        //bot gives an error in the channel if there isn't a direct message open or sends a messsage if it is opened.
-                          bot.send(`Sorry ${user.name}, I cannot send that user a direct message because he does not have a direct message with me open.`, channel);
-                        }
-                        else{
-                          bot.slack.sendMessage(msgtopingee, dm.id);
-                          console.log('SENDING ESCALATED DM');
-                        }
-
-                        console.log('SENDING ESCALATED TEXT')
-                        twilioText(phonenum, msgtopingee);
+							console.log('SENDING ESCALATED TEXT')
+							twilioText(phonenum, msgtopingee);
 
 
-                        let thetime = (Math.floor(new Date() / 1000));
-                        storePingInfo(newpingee[0], thetime, reply[2], slackchannel1);
-
+							let thetime = (Math.floor(new Date() / 1000));
+							storePingInfo(newpingee[0], thetime, reply[2], slackchannel1, newpingee[3]);
+						}
                     });
 
                     pinged_in_channels[slackchannel1].splice(i,1);
