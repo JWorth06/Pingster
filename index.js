@@ -82,8 +82,7 @@ function pullSheetsData(auth) {
             let slackid = row[3].toLowerCase();
             let cellnum = '+' + row[4];
             let escalation = row[8];
-            let escalationtime = row[9] * 60;
-
+            let escalationtime = 1920;
 
             //console.log(JSON.stringify(row));
             //makes sure there are enough arguments
@@ -118,7 +117,7 @@ setInterval(function () {
       }
   }
 
-}, 10000);
+}, 5000);
 
 //This runs every 30 seconds to clear out old message entries, clear out pings that were responded to, and escalate pings.
 setInterval(function () {
@@ -135,14 +134,15 @@ setInterval(function () {
     console.log(JSON.stringify(pinged_in_channels));
     console.log('Stalk JSON:');
     console.log(JSON.stringify(stalked_people));
-}, 30000);
+}, 15000);
 
 //Checks if calls need to be escalated every 10 mins
 setInterval(function () {
 
+	console.log('Checking for missed ping to escalate to calls');
     escalateToCall();
 
-}, 600000);
+}, 15000);
 
 
 
@@ -201,8 +201,10 @@ bot.respondTo('ping', (message, channel, user) => {
 		}
     console.log('SENDING TEXT')
     twilioText(phonenum, msgtopingee);
+	
+	let numofcalls = 0;
 
-    storePingInfo(reply[0], message.ts, key, message.channel, reply[3]);
+    storePingInfo(reply[0], message.ts, key, message.channel, reply[3], numofcalls);
 	}
   });
 }, true);
@@ -291,21 +293,24 @@ bot.respondTo('stalk', (message, channel, user) => {
   let key = getArgs(message.text).shift();
 
   let stalkedUser = bot.getMemberbyName(key);
+  
+  if (stalkedUser == undefined) {
+	  bot.send(`${key} is not a valid slackID`, channel);
+  } else {
+	  if (stalked_people[stalkedUser.id]){
+		stalked_people[stalkedUser.id].push(user.name);
+	  }
+	  else {
+		stalked_people[stalkedUser.id] = [];
+		stalked_people[stalkedUser.id].push(user.name);
+	  }
 
-  if (stalked_people[stalkedUser.id]){
-    stalked_people[stalkedUser.id].push(user.name);
+	  console.log('User JSON:');
+	  console.log(JSON.stringify(stalkedUser));
+	  console.log('Stalk JSON:');
+	  console.log(JSON.stringify(stalked_people));
+	  bot.send(`Now stalking ${key}.`, channel);
   }
-  else {
-    stalked_people[stalkedUser.id] = [];
-    stalked_people[stalkedUser.id].push(user.name);
-  }
-
-  console.log('User JSON:');
-  console.log(JSON.stringify(stalkedUser));
-  console.log('Stalk JSON:');
-  console.log(JSON.stringify(stalked_people));
-  bot.send(`Now stalking ${key}.`, channel);
-
 }, true);
 
 //Stores all messages in a JSON object
@@ -326,8 +331,8 @@ bot.respondTo('', (message, channel, user) => {
 }, true);
 
 //Stores the ping information into a JSON object
-function storePingInfo(username, thetime, id, channel, escalationtime) {
-  var holder = {user : username, timestamp : thetime, who: id, time: escalationtime};
+function storePingInfo(username, thetime, id, channel, escalationtime, numofcalls) {
+  var holder = {user : username, timestamp : thetime, who: id, time: escalationtime, calls: numofcalls};
 
   if (pinged_in_channels[channel]){
     pinged_in_channels[channel].push(holder);
@@ -356,24 +361,42 @@ function storeMessageInfo(username, thetime,  channel) {
 function escalateToCall(){
     for(var slackchannel1 in pinged_in_channels){
         for(var i = Object.keys(pinged_in_channels[slackchannel1]).length - 1; i >= 0; i--){
-            if(pinged_in_channels[slackchannel1][i]['timestamp'] < (Math.floor(new Date() / 1000) - 300)){
-                client.lrange(pinged_in_channels[slackchannel1][i]['who'], 0, -1, (err, reply) => {
-                    if (err) {
-                     console.log(err);
-                     bot.send('Oops! I tried to retrieve something but something went wrong :(', channel.id);
-                     return;
-                    }
-                    let phonenum = reply[1];
-                    console.log('MAKING PHONE CALL');
-                    console.log(phonenum);
-                    twilioCall(phonenum);
-
-                });
-            }
+			console.log(i);
+			makeCalls(slackchannel1,i);
         }
     }
 };
 
+function makeCalls(slackchannel1, counter){
+	if(pinged_in_channels[slackchannel1][counter]['timestamp'] < (Math.floor(new Date() / 1000) - 900)){
+		client.lrange(pinged_in_channels[slackchannel1][counter]['who'], 0, -1, (err, reply) => {
+			if (err) {
+			 console.log(err);
+			 bot.send('Oops! I tried to retrieve something but something went wrong :(', channel.id);
+			 return;
+			}
+			console.log(counter);
+			if(pinged_in_channels[slackchannel1][counter]['calls'] == 0){
+				let phonenum = reply[1];
+				console.log('MAKING PHONE CALL');
+				console.log(phonenum);
+				twilioCall(phonenum);
+				pinged_in_channels[slackchannel1][counter]['calls']++;
+			} else if(pinged_in_channels[slackchannel1][counter]['calls'] == 1 && 
+			(pinged_in_channels[slackchannel1][counter]['timestamp']) < (Math.floor(new Date() / 1000) - 1800)) {
+				let phonenum = reply[1];
+				console.log('MAKING PHONE CALL');
+				console.log(phonenum);
+				twilioCall(phonenum);						
+				pinged_in_channels[slackchannel1][counter]['calls']++;
+			} else if(pinged_in_channels[slackchannel1][counter]['calls'] == 1){
+				console.log('1 call was missed. Waiting to escalate.');
+			} else {
+				console.log('2 calls have been missed.');
+			}
+		});
+	}
+}
 
 //Looks through the pinged list for people that haven't resopnded in the given room yet.
 //If it has been over the given amount of time, it runs a modified ping process to escalate to the next person.
@@ -426,7 +449,9 @@ function escalateMissedPing(){
 
 
 							let thetime = (Math.floor(new Date() / 1000));
-							storePingInfo(newpingee[0], thetime, reply[2], slackchannel1, newpingee[3]);
+							let numofcalls = 0;
+							
+							storePingInfo(newpingee[0], thetime, reply[2], slackchannel1, newpingee[3], numofcalls);
 						}
                     });
 
