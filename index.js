@@ -75,7 +75,12 @@ function pullSheetsData(auth) {
         //console.log(JSON.stringify(rows));
         for (var i = 0; i < rows.length; i++) {
             var row = rows[i];
-
+			
+			if (row[0] == undefined || row[3] == undefined){
+                console.log('Oops! You need to enter Name, slackid, cell number, and person to be esacalated to. :(');
+                return;
+            }
+			
             //initializes variables for storing
             let key = row[0].toLowerCase();
             client.del(key);
@@ -86,7 +91,7 @@ function pullSheetsData(auth) {
 
             //console.log(JSON.stringify(row));
             //makes sure there are enough arguments
-            if (escalation == null){
+			if (escalation == null){
                 console.log('Oops! You need to enter Name, slackid, cell number, and person to be esacalated to. :(');
                 return;
             }
@@ -158,7 +163,6 @@ setInterval(function () {
 bot.respondTo('ping', (message, channel, user) => {
 
   bot.setTypingIndicator(message.channel);
-  //let members = bot.getMembersByChannel(channel);   //gets information of everyone in the channel and the person to ping
   let key = getArgs(message.text).shift();
 
 
@@ -173,13 +177,6 @@ bot.respondTo('ping', (message, channel, user) => {
         bot.send('You can\'t ping in a Direct Message chat room', channel);
         return;
     }
-
-    /*
-    if ((members.indexOf(reply[0]) < 0)) {                        //if -1 is returned, the person is not in the chat or inactive
-        bot.send(`Sorry ${user.name}, but I either can't find ${reply} in this channel, they are offline, or they are a bot!`, channel);
-        return;
-    }
-    */
 
     let msgtopingee = `You are needed in ${channel.name}: slack://channel?id=${channel.id}&team=T025W1LAM`;            //define message to send, extract phone number, and get the direct message
     let phonenum = reply[1];
@@ -203,88 +200,32 @@ bot.respondTo('ping', (message, channel, user) => {
     twilioText(phonenum, msgtopingee);
 	
 	let numofcalls = 0;
-
+	bot.send(`Pinging ${key}.`, channel);
+	
     storePingInfo(reply[0], message.ts, key, message.channel, reply[3], numofcalls);
 	}
   });
 }, true);
 
-
-//Stores all messages in a JSON object
-bot.respondTo('test', (message, channel, user) => {
-
-    if(!user){
-        return;
-    }
-
-    let textMessage = 'Testing message';
-    let extras = {
-        "attachments": [
-        {
-            "text": "Choose a game to play",
-            "fallback": "You are unable to choose a game",
-            "callback_id": "wopr_game",
-            "color": "#3AA3E3",
-            "attachment_type": "default",
-            "actions": [
-                {
-                    "name": "game",
-                    "text": "Chess",
-                    "type": "button",
-                    "value": "chess"
-                },
-                {
-                    "name": "game",
-                    "text": "Falken's Maze",
-                    "type": "button",
-                    "value": "maze"
-                },
-                {
-                    "name": "game",
-                    "text": "Thermonuclear War",
-                    "style": "danger",
-                    "type": "button",
-                    "value": "war",
-                    "confirm": {
-                        "title": "Are you sure?",
-                        "text": "Wouldn't you prefer a good game of chess?",
-                        "ok_text": "Yes",
-                        "dismiss_text": "No"
-                    }
-                }
-            ]
-    }]};
-
-    let compiledMessage = {
-        'token' : process.env.SLACKTOKEN,
-        'channel' : channel.id,
-        'text': textMessage
-    }
-
-    console.log(JSON.stringify('Channel ID: ',channel.id));
-    console.log(JSON.stringify('Text Message :',textMessage));
-    //bot.sendChatMessage(channel.id, textMessage);
-    bot.sendChatMessage(channel.id, textMessage, extras);
-
-}, true);
-
-
 //Test for time outputs in javascript
-bot.respondTo('time', (message, channel, user) => {
+bot.respondTo('acknowledge', (message, channel, user) => {
 
-    let d = new Date();
-    let theDay = d.getDay();
-    let theHour = d.getHours();
-    let theMinute = d.getMinutes();
+	bot.setTypingIndicator(message.channel);
+	let key = getArgs(message.text).shift();
 
-    let theTime = theDay.toString() + " " + theHour.toString() + ":" + theMinute.toString();
-
-    console.log(theDay);
-    console.log(theHour);
-    console.log(theMinute);
-    console.log(theTime);
-
+	if(pinged_in_channels[channel.id] != undefined){		
+		for(var i = Object.keys(pinged_in_channels[channel.id]).length - 1; i >= 0; i--){
+		  if(pinged_in_channels[channel.id][i]['user'] == key){
+			console.log('Removing ping that were responded to :');
+			console.log(pinged_in_channels[channel.id][i]);
+			pinged_in_channels[channel.id].splice([i],1);
+			bot.send(`Ping has been acknowledged.`, channel);
+		  }
+		}
+	}
+	
 }, true);
+
 
 //Notifies you when the user becomes active again.
 bot.respondTo('stalk', (message, channel, user) => {
@@ -295,7 +236,7 @@ bot.respondTo('stalk', (message, channel, user) => {
   let stalkedUser = bot.getMemberbyName(key);
   
   if (stalkedUser == undefined) {
-	  bot.send(`${key} is not a valid slackID`, channel);
+	  bot.send(`${key} is not a valid slackID.`, channel);
   } else {
 	  if (stalked_people[stalkedUser.id]){
 		stalked_people[stalkedUser.id].push(user.name);
@@ -542,91 +483,3 @@ function twilioCall(userPhone){
         }
     });
 }
-
-
-//DEPRECATED FUNCTIONS
-/*
-//Allows users to store a call name, slack id, cell number, and escalation person in the database
-bot.respondTo('store', (message, channel, user) => {
-  let args = getArgs(message.text);
-
-  //initializes variables for storing
-  let key = args.shift();
-  client.del(key);
-  let slackid = args[0];
-  let cellnum = args[1];
-  let escalation = args[2];
-
-  //makes sure there are enough arguments
-  if (escalation == null){
-      bot.send('Oops! You need to enter Name, slackid, cell number, and person to be esacalated to. :(', channel);
-      return;
-    }
-
-  //stores them in the database
-  client.rpush(key, [slackid,cellnum,escalation], (err) => {
-    if (err) {
-      bot.send('Oops! There was an error when trying to store the data :(', channel);
-    } else {
-      bot.send(`Okay ${user.name}, I will remember that for you.`, channel);
-    }
-  });
-}, true);
-
-//Allows user to see what information is stored in a given key
-bot.respondTo('retrieve', (message, channel, user) => {
-  bot.setTypingIndicator(message.channel);
-
-  //gets key from user
-  let key = getArgs(message.text).shift();
-
-  //gets list from database
-  client.lrange(key, 0, -1, (err, reply) => {
-    if (err) {
-     console.log(err);
-     bot.send('Oops! There was an error when trying to retrieve that value of that key :(', channel);
-     return;
-    }
-
-    bot.send('Here\'s what I remember: ' + reply, channel);
-  });
-}, true);
-
-
-//The sendmail function taken from the sendmail/nodemailer module
-function sendemail(phonenum, emailmsg, slackroomid){
-
-    let emailrecipient = phonenum + '@vzwpix.com';
-
-    let transporter = nodemailer.createTransport({
-        service: 'Gmail',
-        auth: {
-            user: 'XXXXXXXX',
-            pass:  'XXXXXXXXXXXX'
-        },
-        debug: true // include SMTP traffic in the logs
-    }, {
-        // sender info
-        from: 'XXXXXXXXXXXXX',
-    });
-
-    let message = {
-        to: emailrecipient,
-        subject: 'You\'re needed in Slack',
-        text: emailmsg,
-        html: emailmsg,
-    };
-
-    transporter.sendMail(message, (error, info) => {
-        if (error) {
-            console.log('Error occurred with the transporter.');
-            console.log(error.message);
-            return;
-        }
-        console.log('Message sent successfully!');
-        console.log(JSON.stringify(info));
-        console.log('Server responded with "%s"', info.response);
-        transporter.close();
-    });
-}
-*/
