@@ -226,6 +226,26 @@ bot.respondTo('acknowledge', (message, channel, user) => {
 	
 }, true);
 
+//Test for time outputs in javascript
+bot.respondTo('ack', (message, channel, user) => {
+
+	bot.setTypingIndicator(message.channel);
+	let key = getArgs(message.text).shift();
+
+	if(pinged_in_channels[channel.id] != undefined){		
+		for(var i = Object.keys(pinged_in_channels[channel.id]).length - 1; i >= 0; i--){
+		  if(pinged_in_channels[channel.id][i]['user'] == key){
+			console.log('Removing ping that were responded to :');
+			console.log(pinged_in_channels[channel.id][i]);
+			pinged_in_channels[channel.id].splice([i],1);
+			bot.send(`Ping has been acknowledged.`, channel);
+		  }
+		}
+	}
+	
+}, true);
+
+
 
 //Notifies you when the user becomes active again.
 bot.respondTo('stalk', (message, channel, user) => {
