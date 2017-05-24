@@ -66,6 +66,9 @@ function pullSheetsData(auth) {
   }, function(err, response) {
     if (err) {
       console.log('The API returned an error: ' + err);
+	  auth.refreshAccessToken(function(err, tokens){
+	    console.log(JSON.parse(tokens));
+	  })
       return;
     }
     var rows = response.values;
